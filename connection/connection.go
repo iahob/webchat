@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"webchat/user"
 )
 
 // 用户中心，维护多个用户的connection
@@ -35,6 +36,7 @@ type Data struct {
 	Type     string   `json:"type"`
 	Content  string   `json:"content"`
 	UserList []string `json:"user_list"`
+	Token    string   `json:"token"`
 }
 
 // websocket服务
@@ -85,8 +87,18 @@ func (c *Connection) reader() {
 		switch c.data.Type {
 		// 用户登录
 		case "login":
-			c.data.User = c.data.Content
-			c.data.From = c.data.User
+			token := c.data.Token
+			userInfo, err := user.Oauth(token)
+			if err != nil {
+				// 推出到登录页面
+				c.data.Type = "relogin"
+				data_b, _ := json.Marshal(c.data)
+				// 推出到登录页面
+				c.sc <- data_b
+				return
+			}
+			c.data.User = userInfo.Name
+			c.data.From = userInfo.Name
 			// 在线人数增加
 			userList = append(userList, c.data.User)
 			c.data.UserList = userList
